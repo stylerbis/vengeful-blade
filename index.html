@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vengeful Blade - Ascend to Olympus</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen">
+            <h1>VENGEFUL BLADE</h1>
+            <p class="subtitle">Ascend to Olympus</p>
+            <div class="start-info">
+                <p>Play as Garrick the Barbarian</p>
+                <p>Defeat Zeus to become a new god of Olympus</p>
+                <p>Collect power-ups and survive 10 waves</p>
+            </div>
+            <button id="start-btn" class="main-btn">Begin Journey</button>
+        </div>
+
+        <!-- Meta Progression Screen -->
+        <div id="meta-screen" class="screen hidden">
+            <h2>Ascension Hall</h2>
+            <p>Choose permanent upgrades with your souls</p>
+            <div class="soul-display">
+                <span>Souls: </span>
+                <span id="meta-souls">0</span>
+            </div>
+            <div class="upgrade-grid" id="upgrade-grid">
+                <!-- Upgrades injected here -->
+            </div>
+            <button id="continue-btn" class="main-btn">Enter Olympus</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-ui" class="hidden">
+            <canvas id="game-canvas"></canvas>
+            
+            <!-- HUD -->
+            <div id="hud">
+                <div class="stats-container">
+                    <div class="wave-display">Wave <span id="wave-num">1</span>/10</div>
+                    <div class="enemy-counter">Enemies: <span id="enemy-count">0</span></div>
+                </div>
+                
+                <div class="bars-container">
+                    <div class="bar-container">
+                        <div class="bar-label">Health</div>
+                        <div class="health-bar">
+                            <div id="health-fill" class="bar-fill"></div>
+                        </div>
+                        <span id="health-text">100/100</span>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-label">Mana</div>
+                        <div class="mana-bar">
+                            <div id="mana-fill" class="bar-fill"></div>
+                        </div>
+                        <span id="mana-text">50/50</span>
+                    </div>
+                </div>
+
+                <div class="soul-counter">Souls: <span id="run-souls">0</span></div>
+            </div>
+
+            <!-- Controls Hint -->
+            <div id="controls-hint">
+                <p>WASD/Arrows: Move | SPACE: Attack | HOLD SPACE: Special</p>
+            </div>
+        </div>
+
+        <!-- Power-up Selection Screen -->
+        <div id="powerup-screen" class="screen hidden">
+            <h2>Choose Your Power</h2>
+            <p class="screen-subtitle">Wave Complete!</p>
+            <div class="powerup-grid" id="powerup-grid">
+                <!-- Power-up cards injected here -->
+            </div>
+        </div>
+
+        <!-- Death Screen -->
+        <div id="death-screen" class="screen hidden">
+            <h2>YOU HAVE FALLEN</h2>
+            <div class="death-summary">
+                <p>Wave Reached: <span id="death-wave">0</span></p>
+                <p>Souls Gained: <span id="death-souls">0</span></p>
+            </div>
+            <button id="respawn-btn" class="main-btn">Return to Ascension Hall</button>
+        </div>
+
+        <!-- Victory Screen -->
+        <div id="victory-screen" class="screen hidden">
+            <h1>YOU HAVE ASCENDED!</h1>
+            <p class="subtitle">Zeus has fallen</p>
+            <p>You are now a god of Olympus</p>
+            <div class="victory-summary">
+                <p>Total Souls: <span id="victory-souls">0</span></p>
+                <p>Ascension Level: <span id="victory-level">1</span></p>
+            </div>
+            <button id="next-run-btn" class="main-btn">Enter Olympus Again</button>
+        </div>
+
+        <!-- Active Powers Display -->
+        <div id="powers-display" class="hidden">
+            <div class="powers-header">Active Powers</div>
+            <div id="powers-list"></div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
