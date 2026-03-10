@@ -121,14 +121,17 @@ class IsoMath {
         };
     }
     
-    static isoToScreen(worldX, worldY, centerX, centerY) {
-        // Offset from center
-        const offsetX = worldX - centerX;
-        const offsetY = worldY - centerY;
+    static isoToScreen(worldX, worldY, playerX, playerY, centerX, centerY) {
+        // Offset from player (camera follows player)
+        const offsetX = worldX - playerX;
+        const offsetY = worldY - playerY;
         
-        // Isometric projection
-        const screenX = (offsetX - offsetY) + centerX;
-        const screenY = (offsetX + offsetY) / 2 + centerY;
+        // Scale down the arena for better visibility (isometric spreads things out)
+        const scale = 0.8;
+        
+        // Isometric projection with proper scale
+        const screenX = (offsetX - offsetY) * scale + centerX;
+        const screenY = (offsetX + offsetY) * scale * 0.5 + centerY;
         
         return { x: screenX, y: screenY };
     }
@@ -151,8 +154,8 @@ class DamageNumber {
         this.screenY += this.velocityY;
     }
     
-    draw(ctx, centerX, centerY) {
-        const screenPos = IsoMath.isoToScreen(this.screenX, this.screenY, centerX, centerY);
+    draw(ctx, playerX, playerY, centerX, centerY) {
+        const screenPos = IsoMath.isoToScreen(this.screenX, this.screenY, playerX, playerY, centerX, centerY);
         ctx.font = 'bold 16px Arial';
         ctx.textAlign = 'center';
         
@@ -208,8 +211,8 @@ class Projectile {
         this.life -= 2;
     }
     
-    draw(ctx, centerX, centerY) {
-        const screenPos = IsoMath.isoToScreen(this.x, this.y, centerX, centerY);
+    draw(ctx, playerX, playerY, centerX, centerY) {
+        const screenPos = IsoMath.isoToScreen(this.x, this.y, playerX, playerY, centerX, centerY);
         ctx.beginPath();
         ctx.arc(screenPos.x, screenPos.y, this.radius, 0, Math.PI * 2);
         
@@ -266,8 +269,8 @@ class BleedingEffect extends StatusEffect {
         super('bleeding', duration, damage);
     }
     
-    draw(ctx, targetX, targetY, centerX, centerY) {
-        const screenPos = IsoMath.isoToScreen(targetX, targetY, centerX, centerY);
+    draw(ctx, targetX, targetY, playerX, playerY, centerX, centerY) {
+        const screenPos = IsoMath.isoToScreen(targetX, targetY, playerX, playerY, centerX, centerY);
         ctx.font = '14px Arial';
         ctx.fillStyle = '#8b0000';
         ctx.fillText('🩸', screenPos.x, screenPos.y - 20);
@@ -289,8 +292,8 @@ class ArenaPickup {
         this.pulse += 0.05;
     }
     
-    draw(ctx, centerX, centerY) {
-        const screenPos = IsoMath.isoToScreen(this.x, this.y, centerX, centerY);
+    draw(ctx, playerX, playerY, centerX, centerY) {
+        const screenPos = IsoMath.isoToScreen(this.x, this.y, playerX, playerY, centerX, centerY);
         const scale = 1 + Math.sin(this.pulse) * 0.1;
         
         ctx.save();
@@ -474,8 +477,8 @@ class Enemy {
         this.statusEffects.push(effect);
     }
     
-    draw(ctx, centerX, centerY) {
-        const screenPos = IsoMath.isoToScreen(this.x, this.y, centerX, centerY);
+    draw(ctx, playerX, playerY, centerX, centerY) {
+        const screenPos = IsoMath.isoToScreen(this.x, this.y, playerX, playerY, centerX, centerY);
         
         // Shadow
         ctx.beginPath();
@@ -502,7 +505,7 @@ class Enemy {
         // Draw status effects
         this.statusEffects.forEach(effect => {
             if (effect.type === 'bleeding') {
-                effect.draw(ctx, this.x, this.y, centerX, centerY);
+                effect.draw(ctx, this.x, this.y, playerX, playerY, centerX, centerY);
             }
         });
     }
@@ -558,8 +561,8 @@ class Pet {
         return { projectile };
     }
     
-    draw(ctx, centerX, centerY) {
-        const screenPos = IsoMath.isoToScreen(this.x, this.y, centerX, centerY);
+    draw(ctx, playerX, playerY, centerX, centerY) {
+        const screenPos = IsoMath.isoToScreen(this.x, this.y, playerX, playerY, centerX, centerY);
         
         // Shadow
         ctx.beginPath();
@@ -786,8 +789,8 @@ class Player {
         this.health = Math.min(this.maxHealth, this.health + amount);
     }
     
-    draw(ctx, centerX, centerY) {
-        const screenPos = IsoMath.isoToScreen(this.x, this.y, centerX, centerY);
+    draw(ctx, playerX, playerY, centerX, centerY) {
+        const screenPos = IsoMath.isoToScreen(this.x, this.y, playerX, playerY, centerX, centerY);
         
         // Whirlwind effect
         if (this.isSpecial) {
@@ -838,7 +841,7 @@ class Player {
         ctx.fillText(weaponIcon, screenPos.x, screenPos.y - 10);
         
         // Draw pets
-        this.pets.forEach(pet => pet.draw(ctx, centerX, centerY));
+        this.pets.forEach(pet => pet.draw(ctx, playerX, playerY, centerX, centerY));
         
         // Teleport cooldown indicator
         if (this.teleport) {
@@ -1231,7 +1234,7 @@ class Game {
         ctx.fillRect(0, 0, CONSTANTS.CANVAS_WIDTH, CONSTANTS.CANVAS_HEIGHT);
         
         // Draw arena background
-        this.drawArena(centerX, centerY);
+        this.drawArena(this.player.x, this.player.y, centerX, centerY);
         
         // Sort all entities by y position for proper depth
         const entities = [
@@ -1244,34 +1247,34 @@ class Game {
         
         entities.forEach(entity => {
             if (entity.type === 'player') {
-                entity.obj.draw(ctx, centerX, centerY);
+                entity.obj.draw(ctx, this.player.x, this.player.y, centerX, centerY);
             } else if (entity.type === 'enemy') {
-                entity.obj.draw(ctx, centerX, centerY);
+                entity.obj.draw(ctx, this.player.x, this.player.y, centerX, centerY);
             } else if (entity.type === 'pickup') {
-                entity.obj.draw(ctx, centerX, centerY);
+                entity.obj.draw(ctx, this.player.x, this.player.y, centerX, centerY);
             }
         });
         
         // Draw projectiles
-        this.projectiles.forEach(proj => proj.draw(ctx, centerX, centerY));
+        this.projectiles.forEach(proj => proj.draw(ctx, this.player.x, this.player.y, centerX, centerY));
         
         // Draw damage numbers
-        this.damageNumbers.forEach(dn => dn.draw(ctx, centerX, centerY));
+        this.damageNumbers.forEach(dn => dn.draw(ctx, this.player.x, this.player.y, centerX, centerY));
         
         // Draw arena border
-        this.drawArenaBorder(centerX, centerY);
+        this.drawArenaBorder(this.player.x, this.player.y, centerX, centerY);
     }
     
-    drawArena(centerX, centerY) {
+    drawArena(playerX, playerY, centerX, centerY) {
         const ctx = this.ctx;
         const width = CONSTANTS.ARENA_WIDTH;
         const height = CONSTANTS.ARENA_HEIGHT;
         
         // Convert arena corners to screen space
-        const tl = IsoMath.isoToScreen(0, 0, centerX, centerY);
-        const tr = IsoMath.isoToScreen(width, 0, centerX, centerY);
-        const bl = IsoMath.isoToScreen(0, height, centerX, centerY);
-        const br = IsoMath.isoToScreen(width, height, centerX, centerY);
+        const tl = IsoMath.isoToScreen(0, 0, playerX, playerY, centerX, centerY);
+        const tr = IsoMath.isoToScreen(width, 0, playerX, playerY, centerX, centerY);
+        const bl = IsoMath.isoToScreen(0, height, playerX, playerY, centerX, centerY);
+        const br = IsoMath.isoToScreen(width, height, playerX, playerY, centerX, centerY);
         
         // Draw arena floor
         ctx.fillStyle = '#2c1810';
@@ -1288,8 +1291,8 @@ class Game {
         ctx.lineWidth = 1;
         
         for (let x = 0; x <= width; x += CONSTANTS.TILE_SIZE) {
-            const pos1 = IsoMath.isoToScreen(x, 0, centerX, centerY);
-            const pos2 = IsoMath.isoToScreen(x, height, centerX, centerY);
+            const pos1 = IsoMath.isoToScreen(x, 0, playerX, playerY, centerX, centerY);
+            const pos2 = IsoMath.isoToScreen(x, height, playerX, playerY, centerX, centerY);
             ctx.beginPath();
             ctx.moveTo(pos1.x, pos1.y);
             ctx.lineTo(pos2.x, pos2.y);
@@ -1297,8 +1300,8 @@ class Game {
         }
         
         for (let y = 0; y <= height; y += CONSTANTS.TILE_SIZE) {
-            const pos1 = IsoMath.isoToScreen(0, y, centerX, centerY);
-            const pos2 = IsoMath.isoToScreen(width, y, centerX, centerY);
+            const pos1 = IsoMath.isoToScreen(0, y, playerX, playerY, centerX, centerY);
+            const pos2 = IsoMath.isoToScreen(width, y, playerX, playerY, centerX, centerY);
             ctx.beginPath();
             ctx.moveTo(pos1.x, pos1.y);
             ctx.lineTo(pos2.x, pos2.y);
@@ -1306,15 +1309,15 @@ class Game {
         }
     }
     
-    drawArenaBorder(centerX, centerY) {
+    drawArenaBorder(playerX, playerY, centerX, centerY) {
         const ctx = this.ctx;
         const width = CONSTANTS.ARENA_WIDTH;
         const height = CONSTANTS.ARENA_HEIGHT;
         
-        const tl = IsoMath.isoToScreen(0, 0, centerX, centerY);
-        const tr = IsoMath.isoToScreen(width, 0, centerX, centerY);
-        const bl = IsoMath.isoToScreen(0, height, centerX, centerY);
-        const br = IsoMath.isoToScreen(width, height, centerX, centerY);
+        const tl = IsoMath.isoToScreen(0, 0, playerX, playerY, centerX, centerY);
+        const tr = IsoMath.isoToScreen(width, 0, playerX, playerY, centerX, centerY);
+        const bl = IsoMath.isoToScreen(0, height, playerX, playerY, centerX, centerY);
+        const br = IsoMath.isoToScreen(width, height, playerX, playerY, centerX, centerY);
         
         ctx.strokeStyle = '#8b4513';
         ctx.lineWidth = 4;
