@@ -1141,6 +1141,7 @@ class Game {
         this.projectiles = this.projectiles.filter(p => !p.isDead());
         this.damageNumbers = this.damageNumbers.filter(dn => !dn.isDead());
         this.arenaPickups = this.arenaPickups.filter(p => p !== null);
+        this.enemies = this.enemies.filter(e => !e.isDead());
         
         // Check wave completion - must defeat all enemies and no more spawning
         if (this.enemies.length === 0 && this.enemiesToSpawn === 0) {
