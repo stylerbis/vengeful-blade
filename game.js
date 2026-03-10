@@ -88,20 +88,27 @@ class InputHandler {
     }
     
     getMovementVector() {
-        let dx = 0, dy = 0;
-        if (this.isDown('KeyW') || this.isDown('ArrowUp')) dy -= 1;
-        if (this.isDown('KeyS') || this.isDown('ArrowDown')) dy += 1;
-        if (this.isDown('KeyA') || this.isDown('ArrowLeft')) dx -= 1;
-        if (this.isDown('KeyD') || this.isDown('ArrowRight')) dx += 1;
+        let screenDx = 0, screenDy = 0;
+        if (this.isDown('KeyW') || this.isDown('ArrowUp')) screenDy -= 1;
+        if (this.isDown('KeyS') || this.isDown('ArrowDown')) screenDy += 1;
+        if (this.isDown('KeyA') || this.isDown('ArrowLeft')) screenDx -= 1;
+        if (this.isDown('KeyD') || this.isDown('ArrowRight')) screenDx += 1;
         
-        // Normalize
-        const length = Math.sqrt(dx * dx + dy * dy);
+        // Normalize screen-space direction
+        const length = Math.sqrt(screenDx * screenDx + screenDy * screenDy);
         if (length > 0) {
-            dx /= length;
-            dy /= length;
+            screenDx /= length;
+            screenDy /= length;
         }
         
-        return { x: dx, y: dy };
+        // Convert screen-space movement to world-space (inverse isometric projection)
+        // Screen to World transformation:
+        // worldX = (screenX + 2*screenY) / 2
+        // worldY = (2*screenY - screenX) / 2
+        const worldDx = (screenDx + 2 * screenDy) / 2;
+        const worldDy = (2 * screenDy - screenDx) / 2;
+        
+        return { x: worldDx, y: worldDy };
     }
 }
 
