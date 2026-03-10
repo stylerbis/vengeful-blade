@@ -496,7 +496,7 @@ class Enemy {
         ctx.stroke();
         
         // Health bar
-        const healthPct = this.health / this.maxHealth;
+        const healthPct = Math.max(0, Math.min(1, this.health / this.maxHealth));
         ctx.fillStyle = '#333';
         ctx.fillRect(screenPos.x - 20, screenPos.y - this.radius - 10, 40, 5);
         ctx.fillStyle = healthPct > 0.5 ? '#4caf50' : healthPct > 0.25 ? '#ff9800' : '#f44';
