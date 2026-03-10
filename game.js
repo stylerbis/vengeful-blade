@@ -943,6 +943,7 @@ class Game {
         this.player.health = this.player.maxHealth;
         
         this.enemies = [];
+        this.enemiesToSpawn = 0;
         this.projectiles = [];
         this.damageNumbers = [];
         this.arenaPickups = [];
@@ -973,6 +974,7 @@ class Game {
         
         // Spawn enemies based on wave
         const enemyCount = 3 + this.wave * 2;
+        this.enemiesToSpawn = enemyCount;
         const spawnInterval = 1000;
         
         for (let i = 0; i < enemyCount; i++) {
@@ -982,6 +984,7 @@ class Game {
                 const type = this.getEnemyType();
                 const { x, y } = this.getRandomSpawnPosition();
                 this.enemies.push(new Enemy(x, y, type, this.wave));
+                this.enemiesToSpawn--;
             }, i * spawnInterval);
         }
         
@@ -1139,13 +1142,9 @@ class Game {
         this.damageNumbers = this.damageNumbers.filter(dn => !dn.isDead());
         this.arenaPickups = this.arenaPickups.filter(p => p !== null);
         
-        // Check wave completion
-        if (this.enemies.length === 0) {
-            setTimeout(() => {
-                if (this.state === GameState.PLAYING) {
-                    this.waveComplete();
-                }
-            }, 1000);
+        // Check wave completion - must defeat all enemies and no more spawning
+        if (this.enemies.length === 0 && this.enemiesToSpawn === 0) {
+            this.waveComplete();
         }
         
         // Update enemy counter
@@ -1336,6 +1335,7 @@ class Game {
             return;
         }
         
+        this.enemiesToSpawn = 0;
         this.state = GameState.POWERUP_SELECTION;
         clearInterval(this.pickupSpawnInterval);
         
