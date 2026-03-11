@@ -481,6 +481,11 @@ class Enemy {
         
         this.statusEffects = [];
         
+        // Knockback
+        this.knockbackX = 0;
+        this.knockbackY = 0;
+        this.knockbackDuration = 0;
+        
         // Animation
         this.state = 'idle';
         this.frame = 0;
@@ -551,10 +556,19 @@ class Enemy {
             return { projectiles: [] };
         }
         
-        // Move towards target
-        if (dist > 30) {
-            this.x += (dx / dist) * this.speed;
-            this.y += (dy / dist) * this.speed;
+        // Apply knockback if active (prioritized over normal movement)
+        if (this.knockbackDuration > 0) {
+            this.x += this.knockbackX;
+            this.y += this.knockbackY;
+            this.knockbackDuration--;
+            // Don't move towards target while being knocked back
+            this.state = 'idle';
+        } else {
+            // Move towards target
+            if (dist > 30) {
+                this.x += (dx / dist) * this.speed;
+                this.y += (dy / dist) * this.speed;
+            }
         }
         
         // Soft collision with other enemies
@@ -577,8 +591,24 @@ class Enemy {
         return { projectiles: [] };
     }
     
-    takeDamage(amount) {
+    takeDamage(amount, sourceX = null, sourceY = null) {
         this.health -= amount;
+        
+        // Apply knockback if source position is provided
+        if (sourceX !== null && sourceY !== null) {
+            const dx = this.x - sourceX;
+            const dy = this.y - sourceY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist > 0) {
+                const knockbackForce = 2.0; // Knockback strength
+                this.knockbackX = (dx / dist) * knockbackForce;
+                this.knockbackY = (dy / dist) * knockbackForce;
+                this.knockbackDuration = 15; // Number of frames to apply knockback
+                console.log(`Knockback applied: X=${this.knockbackX.toFixed(2)}, Y=${this.knockbackY.toFixed(2)}, Duration=${this.knockbackDuration}`);
+            }
+        }
+        
         return this.health <= 0;
     }
     
@@ -1163,6 +1193,7 @@ class Game {
         this.wave = 1;
         this.player.souls = 0;
         this.state = GameState.PLAYING;
+        this.lastMeleeDamage = 0;
         
         this.startWave();
         this.showScreen('game');
@@ -1295,7 +1326,7 @@ class Game {
                     proj.hitted = true;
                     
                     if (target instanceof Enemy) {
-                        const killed = target.takeDamage(proj.damage);
+                        const killed = target.takeDamage(proj.damage, proj.x, proj.y);
                         this.createDamageNumber(proj.x, proj.y, proj.damage);
                         
                         if (target.type === 'bleeding' && this.player.bleedingEdge) {
@@ -1368,13 +1399,20 @@ class Game {
     
     checkMeleeAttack(player, enemies, damage) {
         const range = 60;
+        const now = Date.now();
+        
+        // Only apply damage if enough time has passed since last melee damage
+        if (now - this.lastMeleeDamage < 200) {
+            return;
+        }
+        
         enemies.forEach(enemy => {
             const dx = enemy.x - player.x;
             const dy = enemy.y - player.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             
             if (dist < range) {
-                const killed = enemy.takeDamage(damage);
+                const killed = enemy.takeDamage(damage, player.x, player.y);
                 this.createDamageNumber(enemy.x, enemy.y, damage);
                 
                 if (player.bleedingEdge) {
@@ -1384,6 +1422,9 @@ class Game {
                 if (killed) {
                     player.souls += enemy.souls;
                 }
+                
+                // Update last melee damage time
+                this.lastMeleeDamage = now;
             }
         });
     }
@@ -1396,7 +1437,7 @@ class Game {
             const dist = Math.sqrt(dx * dx + dy * dy);
             
             if (dist < range) {
-                const killed = enemy.takeDamage(damage);
+                const killed = enemy.takeDamage(damage, player.x, player.y);
                 this.createDamageNumber(enemy.x, enemy.y, damage);
                 
                 if (player.bleedingEdge) {
