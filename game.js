@@ -144,6 +144,67 @@ class IsoMath {
     }
 }
 
+// Sprite Manager
+class SpriteManager {
+    constructor() {
+        this.sprites = {};
+        this.loadAllSprites();
+    }
+    
+    loadAllSprites() {
+        // Soldier sprites for player (Garrick)
+        const soldierPath = 'assets/Characters(100x100)/Soldier/Soldier/';
+        this.sprites.player = {
+            idle: new Image(),
+            walk: new Image(),
+            attack1: new Image(),
+            attack2: new Image(),
+            hurt: new Image(),
+            death: new Image()
+        };
+        this.sprites.player.idle.src = soldierPath + 'Soldier-Idle.png';
+        this.sprites.player.walk.src = soldierPath + 'Soldier-Walk.png';
+        this.sprites.player.attack1.src = soldierPath + 'Soldier-Attack01.png';
+        this.sprites.player.attack2.src = soldierPath + 'Soldier-Attack02.png';
+        this.sprites.player.hurt.src = soldierPath + 'Soldier-Hurt.png';
+        this.sprites.player.death.src = soldierPath + 'Soldier-Death.png';
+        
+        // Orc sprites for enemies
+        const orcPath = 'assets/Characters(100x100)/Orc/Orc/';
+        this.sprites.enemy = {
+            idle: new Image(),
+            walk: new Image(),
+            attack1: new Image(),
+            attack2: new Image(),
+            hurt: new Image(),
+            death: new Image()
+        };
+        this.sprites.enemy.idle.src = orcPath + 'Orc-Idle.png';
+        this.sprites.enemy.walk.src = orcPath + 'Orc-Walk.png';
+        this.sprites.enemy.attack1.src = orcPath + 'Orc-Attack01.png';
+        this.sprites.enemy.attack2.src = orcPath + 'Orc-Attack02.png';
+        this.sprites.enemy.hurt.src = orcPath + 'Orc-Hurt.png';
+        this.sprites.enemy.death.src = orcPath + 'Orc-Death.png';
+    }
+    
+    getSprite(characterType, state) {
+        if (!this.sprites[characterType]) return null;
+        const sprite = this.sprites[characterType][state];
+        return sprite ? sprite : this.sprites[characterType].idle;
+    }
+    
+    isLoaded() {
+        // Check if all images are loaded
+        const allImages = [];
+        for (const type in this.sprites) {
+            for (const state in this.sprites[type]) {
+                allImages.push(this.sprites[type][state]);
+            }
+        }
+        return allImages.every(img => img.complete && img.naturalHeight !== 0);
+    }
+}
+
 // Damage Number Class
 class DamageNumber {
     constructor(x, y, amount, type = 'normal') {
@@ -419,6 +480,13 @@ class Enemy {
         }
         
         this.statusEffects = [];
+        
+        // Animation
+        this.state = 'idle';
+        this.frame = 0;
+        this.frameTimer = 0;
+        this.frameRate = 10;
+        this.direction = 1;
     }
     
     update(deltaTime, target, enemies) {
@@ -431,10 +499,44 @@ class Enemy {
             return effect.isActive();
         });
         
-        // Movement towards target
+        // Track previous state to detect state changes
+        const previousState = this.state;
+        
+        // Update animation state
+        this.frameTimer += deltaTime;
+        if (this.frameTimer >= this.frameRate) {
+            this.frameTimer = 0;
+            this.frame++;
+        }
+        
+        // Update facing direction based on movement
         const dx = target.x - this.x;
         const dy = target.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dx > 0) this.direction = 1;
+        if (dx < 0) this.direction = -1;
+        
+        // Determine animation state
+        if (this.range && dist <= this.range) {
+            const now = Date.now();
+            if (now - this.lastAttack <= 500) {
+                this.state = 'attack1';
+            } else if (dist > 30) {
+                this.state = 'walk';
+            } else {
+                this.state = 'idle';
+            }
+        } else if (dist > 30) {
+            this.state = 'walk';
+        } else {
+            this.state = 'idle';
+        }
+        
+        // Reset frame counter when state changes to ensure animation starts from frame 0
+        if (this.state !== previousState) {
+            this.frame = 0;
+            this.frameTimer = 0;
+        }
         
         // Check for ranged attack
         if (this.range && dist <= this.range) {
@@ -487,27 +589,57 @@ class Enemy {
     draw(ctx, playerX, playerY, centerX, centerY) {
         const screenPos = IsoMath.isoToScreen(this.x, this.y, playerX, playerY, centerX, centerY);
         
+        // Get sprite from sprite manager
+        const spriteManager = window.gameInstance ? window.gameInstance.spriteManager : null;
+        const sprite = spriteManager ? spriteManager.getSprite('enemy', this.state) : null;
+        
         // Shadow
         ctx.beginPath();
-        ctx.ellipse(screenPos.x, screenPos.y + this.radius, this.radius, this.radius / 2, 0, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.ellipse(screenPos.x, screenPos.y + 30, 20, 8, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.fill();
         
-        // Body
-        ctx.beginPath();
-        ctx.arc(screenPos.x, screenPos.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        // Draw sprite if loaded, otherwise fall back to circle
+        if (sprite && sprite.complete && sprite.naturalHeight !== 0) {
+            const spriteWidth = 100;
+            const spriteHeight = 100;
+            const scale = 3.6;
+        
+            // Determine which frame to show based on animation
+            let frameX = 0;
+            let frameWidth = 100;
+        
+            // For multi-frame sprites, we'll show different frames
+            if (this.state === 'walk' || this.state === 'attack1') {
+                const frameCount = Math.floor(sprite.naturalWidth / frameWidth);
+                if (frameCount > 1) {
+                    frameX = (this.frame % frameCount) * frameWidth;
+                }
+            }
+        
+            // Draw the sprite
+            ctx.save();
+            ctx.translate(screenPos.x, screenPos.y - 10);
+            ctx.scale(this.direction * scale, scale);
+            ctx.drawImage(sprite, frameX, 0, frameWidth, spriteHeight, -frameWidth/2, -spriteHeight/2, frameWidth, spriteHeight);
+            ctx.restore();
+        } else {
+            // Fallback to circle if sprite not loaded
+            ctx.beginPath();
+            ctx.arc(screenPos.x, screenPos.y - 20, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
         
         // Health bar
         const healthPct = Math.max(0, Math.min(1, this.health / this.maxHealth));
         ctx.fillStyle = '#333';
-        ctx.fillRect(screenPos.x - 20, screenPos.y - this.radius - 10, 40, 5);
+        ctx.fillRect(screenPos.x - 20, screenPos.y - 70, 40, 5);
         ctx.fillStyle = healthPct > 0.5 ? '#4caf50' : healthPct > 0.25 ? '#ff9800' : '#f44';
-        ctx.fillRect(screenPos.x - 20, screenPos.y - this.radius - 10, 40 * healthPct, 5);
+        ctx.fillRect(screenPos.x - 20, screenPos.y - 70, 40 * healthPct, 5);
         
         // Draw status effects
         this.statusEffects.forEach(effect => {
@@ -641,6 +773,13 @@ class Player {
         
         // Active powers list
         this.activePowers = [];
+        
+        // Animation
+        this.state = 'idle';
+        this.frame = 0;
+        this.frameTimer = 0;
+        this.frameRate = 10;
+        this.direction = 1;
     }
     
     applyPower(power) {
@@ -702,6 +841,42 @@ class Player {
         
         // Handle movement
         const move = input.getMovementVector();
+        
+        // Track previous state to detect state changes
+        const previousState = this.state;
+        
+        // Update facing direction based on movement
+        if (move.x > 0) this.direction = 1;
+        if (move.x < 0) this.direction = -1;
+        
+        // Determine animation state
+        if (this.isSpecial) {
+            this.state = 'attack1';
+        } else if (this.isAttacking) {
+            this.state = 'attack2';
+        } else if (move.x !== 0 || move.y !== 0) {
+            this.state = 'walk';
+        } else {
+            this.state = 'idle';
+        }
+        
+        // Reset frame counter when state changes to ensure animation starts from frame 0
+        if (this.state !== previousState) {
+            this.frame = 0;
+            this.frameTimer = 0;
+        }
+        
+        // Update animation frame
+        this.frameTimer += deltaTime;
+        if (this.frameTimer >= this.frameRate) {
+            this.frameTimer = 0;
+            this.frame++;
+        }
+        
+        // Reset attack flag after animation duration (longer for visible animation)
+        if (this.isAttacking && Date.now() - this.lastAttack > 500) {
+            this.isAttacking = false;
+        }
         
         // Handle teleport
         if (this.teleport && input.isDown('KeyT')) {
@@ -799,6 +974,10 @@ class Player {
     draw(ctx, playerX, playerY, centerX, centerY) {
         const screenPos = IsoMath.isoToScreen(this.x, this.y, playerX, playerY, centerX, centerY);
         
+        // Get sprite from sprite manager
+        const spriteManager = window.gameInstance.spriteManager;
+        const sprite = spriteManager ? spriteManager.getSprite('player', this.state) : null;
+        
         // Whirlwind effect
         if (this.isSpecial) {
             ctx.beginPath();
@@ -817,35 +996,58 @@ class Player {
         
         // Shadow
         ctx.beginPath();
-        ctx.ellipse(screenPos.x, screenPos.y + this.radius, this.radius, this.radius / 2, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenPos.x, screenPos.y + 30, 25, 10, 0, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.fill();
         
-        // Body
-        ctx.beginPath();
-        ctx.arc(screenPos.x, screenPos.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#e94560';
-        ctx.fill();
-        ctx.strokeStyle = '#c23658';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        
-        // Weapon indicator
-        let weaponIcon;
-        switch(this.weapon) {
-            case WeaponType.SWORD: weaponIcon = '⚔️'; break;
-            case WeaponType.AXE: weaponIcon = '🪓'; break;
-            case WeaponType.BOW: weaponIcon = '🏹'; break;
-            case WeaponType.POLEARM: weaponIcon = '🎯'; break;
-            case WeaponType.DAGGER: weaponIcon = '🗡️'; break;
-            default: weaponIcon = '⚔️';
+        // Draw sprite if loaded, otherwise fall back to circle
+        if (sprite && sprite.complete && sprite.naturalHeight !== 0) {
+            const spriteWidth = 100;
+            const spriteHeight = 100;
+            const scale = 3.6; // Scale down sprite to fit game
+            
+            // Determine which frame to show based on animation
+            let frameX = 0;
+            let frameWidth = 100;
+            
+            // For multi-frame sprites, we'll show different frames
+            if (this.state === 'walk' || this.state === 'attack1' || this.state === 'attack2') {
+                const frameCount = Math.floor(sprite.naturalWidth / frameWidth);
+                if (frameCount > 1) {
+                    frameX = (this.frame % frameCount) * frameWidth;
+                }
+            }
+            
+            // Draw the sprite
+            ctx.save();
+            ctx.translate(screenPos.x, screenPos.y - 10);
+            ctx.scale(this.direction * scale, scale);
+            ctx.drawImage(sprite, frameX, 0, frameWidth, spriteHeight, -frameWidth/2, -spriteHeight/2, frameWidth, spriteHeight);
+            ctx.restore();
+        } else {
+            // Fallback to circle if sprite not loaded
+            ctx.fill();
+            ctx.strokeStyle = '#c23658';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // Weapon indicator
+            let weaponIcon;
+            switch(this.weapon) {
+                case WeaponType.SWORD: weaponIcon = '⚔️'; break;
+                case WeaponType.AXE: weaponIcon = '🪓'; break;
+                case WeaponType.BOW: weaponIcon = '🏹'; break;
+                case WeaponType.POLEARM: weaponIcon = '🎯'; break;
+                case WeaponType.DAGGER: weaponIcon = '🗡️'; break;
+                default: weaponIcon = '⚔️';
+            }
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(weaponIcon, screenPos.x, screenPos.y - 30);
         }
-        
-        ctx.fillStyle = '#fff';
-        ctx.font = '16px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(weaponIcon, screenPos.x, screenPos.y - 10);
         
         // Draw pets
         this.pets.forEach(pet => pet.draw(ctx, playerX, playerY, centerX, centerY));
@@ -877,6 +1079,7 @@ class Game {
         this.canvas.height = CONSTANTS.CANVAS_HEIGHT;
         
         this.input = new InputHandler();
+        this.spriteManager = new SpriteManager();
         this.state = GameState.START;
         this.wave = 1;
         this.lastTime = 0;
@@ -888,6 +1091,9 @@ class Game {
         
         this.initUI();
         this.setupEventListeners();
+        
+        // Store global reference for sprite access
+        window.gameInstance = this;
     }
     
     initUI() {
