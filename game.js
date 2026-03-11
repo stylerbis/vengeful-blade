@@ -485,7 +485,7 @@ class Enemy {
         this.state = 'idle';
         this.frame = 0;
         this.frameTimer = 0;
-        this.frameRate = 10;
+        this.frameRate = 75; // Slow down animation (ms per frame)
         this.direction = 1;
     }
     
@@ -778,7 +778,7 @@ class Player {
         this.state = 'idle';
         this.frame = 0;
         this.frameTimer = 0;
-        this.frameRate = 10;
+        this.frameRate = 75; // Slow down animation (ms per frame)
         this.direction = 1;
     }
     
