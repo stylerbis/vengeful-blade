@@ -998,7 +998,7 @@ class Player {
     }
     
     heal(amount) {
-        this.health = Math.min(this.maxHealth, this.health + amount);
+        this.mana = Math.min(this.maxMana, this.mana + amount);
     }
     
     draw(ctx, playerX, playerY, centerX, centerY) {
@@ -1397,6 +1397,8 @@ class Game {
         // Update enemy counter
         document.getElementById('enemy-count').textContent = this.enemies.length;
         document.getElementById('run-souls').textContent = this.player.souls;
+
+        this.updateHUD()
     }
     
     checkMeleeAttack(player, enemies, damage) {
@@ -1417,6 +1419,7 @@ class Game {
                 
                 if (killed) {
                     player.souls += enemy.souls;
+                    this.updateHUD();
                 }
                 
 
@@ -1441,6 +1444,7 @@ class Game {
                 
                 if (killed) {
                     player.souls += enemy.souls;
+                    this.updateHUD();
                 }
             }
         });
