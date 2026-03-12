@@ -1339,6 +1339,7 @@ class Game {
                     } else if (target === this.player) {
                         const killed = this.player.takeDamage(proj.damage);
                         this.createDamageNumber(proj.x, proj.y, proj.damage, 'enemy');
+                        this.updateHUD();
                         
                         if (killed) {
                             this.handleDeath();
@@ -1362,6 +1363,7 @@ class Game {
             
             if (dist < enemy.radius + this.player.radius) {
                 const killed = this.player.takeDamage(enemy.damage * 0.1);
+                this.updateHUD();
                 if (killed) {
                     this.handleDeath();
                 }
