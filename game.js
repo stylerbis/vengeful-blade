@@ -601,7 +601,7 @@ class Enemy {
             const dist = Math.sqrt(dx * dx + dy * dy);
             
             if (dist > 0) {
-                const knockbackForce = 2.0; // Knockback strength
+                const knockbackForce = 5.0; // Knockback strength
                 this.knockbackX = (dx / dist) * knockbackForce;
                 this.knockbackY = (dy / dist) * knockbackForce;
                 this.knockbackDuration = 15; // Number of frames to apply knockback
@@ -1302,8 +1302,8 @@ class Game {
         if (playerResult.isWhirlwind) {
             this.checkWhirlwind(this.player, this.enemies, this.player.damage * this.damageMultiplier);
         } else {
-            // Check if Space is held for melee
-            if (this.input.isDown('Space') && this.player.weapon !== WeaponType.BOW) {
+            // Check melee on frame 3 of attack animation
+            if (this.player.state === 'attack2' && this.player.frame === 3) {
                 this.checkMeleeAttack(this.player, this.enemies, this.player.damage * this.player.damageMultiplier);
             }
         }
@@ -1399,12 +1399,6 @@ class Game {
     
     checkMeleeAttack(player, enemies, damage) {
         const range = 60;
-        const now = Date.now();
-        
-        // Only apply damage if enough time has passed since last melee damage
-        if (now - this.lastMeleeDamage < 200) {
-            return;
-        }
         
         enemies.forEach(enemy => {
             const dx = enemy.x - player.x;
@@ -1423,8 +1417,7 @@ class Game {
                     player.souls += enemy.souls;
                 }
                 
-                // Update last melee damage time
-                this.lastMeleeDamage = now;
+
             }
         });
     }
