@@ -867,7 +867,7 @@ class Player {
     
     update(deltaTime, input, arenaWidth, arenaHeight, enemies) {
         // Mana regeneration
-        this.mana = Math.min(this.maxMana, this.mana + CONSTANTS.MANA_REGEN * deltaTime / 16);
+        this.mana = Math.max(0, Math.min(this.maxMana, this.mana + CONSTANTS.MANA_REGEN * deltaTime / 16));
         
         // Handle movement
         const move = input.getMovementVector();
@@ -951,7 +951,7 @@ class Player {
             if (this.whirlwind && input.heldSpace > 100) {
                 if (now - this.lastSpecial >= this.specialCooldown && this.mana >= 20) {
                     this.lastSpecial = now;
-                    this.mana -= 20;
+                    this.mana = Math.max(0, this.mana - 20);
                     isWhirlwind = true;
                 }
             } else {
