@@ -917,7 +917,7 @@ class Player {
         }
         
         // Handle teleport (trigger on key press, not key held)
-        const teleportPressed = input.isDown('KeyT') && !this.lastTeleportKey;
+        const teleportPressed = input.isDown('ShiftLeft') && !this.lastTeleportKey;
         if (this.teleport && teleportPressed) {
             const now = Date.now();
             if (now - this.lastTeleport >= this.teleportCooldown && this.mana >= this.teleportManaCost) {
@@ -935,7 +935,7 @@ class Player {
                 }
             }
         }
-        this.lastTeleportKey = input.isDown('KeyT');
+        this.lastTeleportKey = input.isDown('ShiftLeft');
         
         // Move player
         if (move.x !== 0 || move.y !== 0) {
@@ -1785,7 +1785,7 @@ const POWERUPS = [
     {
         id: 'teleport',
         name: 'Quick Step',
-        description: 'Press T to teleport forward (5s cooldown)',
+        description: 'Press SHIFT to teleport forward (5s cooldown)',
         type: PowerUpType.ABILITY,
         rarity: 'Rare'
     },
