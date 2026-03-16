@@ -53,14 +53,21 @@ class InputHandler {
     constructor() {
         this.keys = {};
         this.mouse = { x: 0, y: 0, leftDown: false, rightDown: false };
+        this.heldSpace = 0; // Track how long space is held for special attacks
         
         window.addEventListener('keydown', (e) => {
             this.keys[e.code] = true;
-            if (e.code === 'Space') e.preventDefault();
+            if (e.code === 'Space') {
+                e.preventDefault();
+                this.heldSpace = 0;
+            }
         });
         
         window.addEventListener('keyup', (e) => {
             this.keys[e.code] = false;
+            if (e.code === 'Space') {
+                this.heldSpace = 0;
+            }
         });
         
         const canvas = document.getElementById('game-canvas');
@@ -85,6 +92,15 @@ class InputHandler {
     
     isDown(code) {
         return this.keys[code] === true;
+    }
+    
+    update(deltaTime) {
+        // Increment heldSpace timer if space is held
+        if (this.isDown('Space')) {
+            this.heldSpace += deltaTime;
+        } else {
+            this.heldSpace = 0;
+        }
     }
     
     getMovementVector() {
@@ -781,6 +797,10 @@ class Player {
         this.specialCooldown = CONSTANTS.SPECIAL_COOLDOWN;
         this.lastSpecial = 0;
         
+        // Track attack key state
+        this.lastAttackKey = false;
+        this.lastSpaceKey = false;
+        
         // Modifiers
         this.bleedingEdge = false;
         this.triforce = false;
@@ -972,8 +992,8 @@ class Player {
                     this.mana = Math.max(0, this.mana - 20);
                     isWhirlwind = true;
                 }
-            } else {
-                // Normal attack
+            } else if (!this.lastSpaceKey) {
+                // Normal attack - trigger only on key press
                 if (now - this.lastAttack >= this.attackCooldown) {
                     this.lastAttack = now;
                     this.isAttacking = true;
@@ -999,6 +1019,9 @@ class Player {
                 }
             }
         }
+        
+        // Track space key state for next frame
+        this.lastSpaceKey = input.isDown('Space');
         
         this.isSpecial = isWhirlwind;
         
@@ -1307,6 +1330,9 @@ class Game {
     update(deltaTime) {
         const arenaWidth = CONSTANTS.ARENA_WIDTH;
         const arenaHeight = CONSTANTS.ARENA_HEIGHT;
+        
+        // Update input handler
+        this.input.update(deltaTime);
         
         // Update player
         const playerResult = this.player.update(deltaTime, this.input, arenaWidth, arenaHeight, this.enemies);
