@@ -789,6 +789,11 @@ class Player {
         this.teleportDistance = 150;
         this.teleportCooldown = 5000;
         this.lastTeleport = 0;
+        this.teleportManaCost = 15;
+        
+        // Last movement direction tracking
+        this.lastMoveX = 0;
+        this.lastMoveY = 0;
         
         // Stats multipliers
         this.damageMultiplier = 1;
@@ -810,6 +815,9 @@ class Player {
         this.frameTimer = 0;
         this.frameRate = 75; // Slow down animation (ms per frame)
         this.direction = 1;
+        
+        // Teleport tracking
+        this.lastTeleportKey = false;
     }
     
     applyPower(power) {
@@ -856,7 +864,7 @@ class Player {
         if (power.name.includes('Triforce')) {
             this.triforce = true;
         }
-        if (power.name.includes('Teleport')) {
+        if (power.id === 'teleport' || power.name.includes('Quick Step')) {
             this.teleport = true;
         }
     }
@@ -908,23 +916,33 @@ class Player {
             this.isAttacking = false;
         }
         
-        // Handle teleport
-        if (this.teleport && input.isDown('KeyT')) {
+        // Handle teleport (trigger on key press, not key held)
+        const teleportPressed = input.isDown('KeyT') && !this.lastTeleportKey;
+        if (this.teleport && teleportPressed) {
             const now = Date.now();
-            if (now - this.lastTeleport >= this.teleportCooldown) {
-                if (move.x !== 0 || move.y !== 0) {
-                    this.x += move.x * this.teleportDistance;
-                    this.y += move.y * this.teleportDistance;
+            if (now - this.lastTeleport >= this.teleportCooldown && this.mana >= this.teleportManaCost) {
+                // Use current movement if moving, otherwise use last movement direction
+                let teleportDirX = this.lastMoveX;
+                let teleportDirY = this.lastMoveY;
+                
+                if (teleportDirX !== 0 || teleportDirY !== 0) {
+                    this.x += teleportDirX * this.teleportDistance;
+                    this.y += teleportDirY * this.teleportDistance;
+                    this.mana -= this.teleportManaCost;
                     this.lastTeleport = now;
+                    this.state = 'teleport';
                     return { teleport: true, x: this.x, y: this.y };
                 }
             }
         }
+        this.lastTeleportKey = input.isDown('KeyT');
         
         // Move player
         if (move.x !== 0 || move.y !== 0) {
             this.x += move.x * this.speed;
             this.y += move.y * this.speed;
+            this.lastMoveX = move.x;
+            this.lastMoveY = move.y;
         }
         
         // Keep player in arena bounds
